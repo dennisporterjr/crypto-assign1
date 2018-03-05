@@ -1,4 +1,3 @@
-import java.lang.reflect.Array;
 import java.util.*;
 
 public class TxHandler {
@@ -90,9 +89,15 @@ public class TxHandler {
      * transaction for correctness, returning a mutually valid array of accepted transactions, and
      * updating the current UTXO pool as appropriate.
      */
-    public Transaction[] handleTxs(Transaction[] possibleTxs) {
-        // IMPLEMENT THIS
-        return possibleTxs;
+    public List<Transaction> handleTxs(Transaction[] possibleTxs) {
+        List<Transaction> transactions = new List<Transaction>();
+        for(int i = 0 ; i < possibleTxs.length ; i++){
+            Transaction tx = possibleTxs[i];
+            if(isValidTx(tx)){
+                transactions.add(tx);
+            }
+        }
+        return transactions;
     }
 
 }
