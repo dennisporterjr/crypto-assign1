@@ -41,14 +41,20 @@ public class TxHandler {
         double totalInput = 0.0;
         double totalOutput = 0.0;
 
+        boolean validSig;
+
         for (int i = 0; i < inputSize; i ++) {
 
             UTXO unspent = new UTXO(inputs.get(i).prevTxHash, inputs.get(i).outputIndex);
             Transaction.Output ut = this.utxoPool.getTxOutput(unspent);
 
-            // (2) the signatures on each input of {@code tx} are valid,
-            boolean validSig = Crypto.verifySignature(ut.address, tx.getRawDataToSign(inputs.get(i).outputIndex), inputs.get(i).signature);
-            if (!validSig) {
+            if(this.utxoPool.contains(unspent)) {
+                // (2) the signatures on each input of {@code tx} are valid,
+                validSig = Crypto.verifySignature(ut.address, tx.getRawDataToSign(inputs.get(i).outputIndex), inputs.get(i).signature);
+                if (!validSig) {
+                    return false;
+                }
+            } else {
                 return false;
             }
 
@@ -90,14 +96,15 @@ public class TxHandler {
      * updating the current UTXO pool as appropriate.
      */
     public List<Transaction> handleTxs(Transaction[] possibleTxs) {
-        List<Transaction> transactions = new List<Transaction>();
+/*        List<Transaction> transactions = new List<Transaction>();
         for(int i = 0 ; i < possibleTxs.length ; i++){
             Transaction tx = possibleTxs[i];
             if(isValidTx(tx)){
                 transactions.add(tx);
             }
         }
-        return transactions;
+        return transactions;*/
+        return possibleTxs;
     }
 
 }
