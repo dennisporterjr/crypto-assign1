@@ -13,20 +13,13 @@ public class TxHandler {
         // IMPLEMENT THIS
         this.utxoPool = new UTXOPool(utxoPool);
 
-
-        System.out.println("\n\n");
         // All unspent transaction outputs
         ArrayList<UTXO> utxo = this.utxoPool.getAllUTXO();
-        System.out.println("Unspent Output Pool Size: " + utxo.size());
 
-        System.out.println("\n\nUnspent Outputs");
-        System.out.println("-----------------------");
         // loop through unspent tx outputs
-        for (UTXO txoutput : utxo) {
+/*        for (UTXO txoutput : utxo) {
             Transaction.Output output = this.utxoPool.getTxOutput(txoutput);
-            System.out.println("public address: " + output.address.getEncoded());
-            System.out.println("value: " + output.value);
-        }
+        }*/
 
     }
 
@@ -55,7 +48,8 @@ public class TxHandler {
             Transaction.Output ut = this.utxoPool.getTxOutput(unspent);
 
             // (2) the signatures on each input of {@code tx} are valid,
-            if (!Crypto.verifySignature(ut.address, tx.getRawDataToSign(inputs.get(i).outputIndex), inputs.get(i).signature)) {
+            boolean validSig = Crypto.verifySignature(ut.address, tx.getRawDataToSign(inputs.get(i).outputIndex), inputs.get(i).signature);
+            if (!validSig) {
                 return false;
             }
 
