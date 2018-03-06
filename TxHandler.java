@@ -23,7 +23,7 @@ public class TxHandler {
 
             UTXO unspent = new UTXO(inputs.get(i).prevTxHash, inputs.get(i).outputIndex);
 
-            if(!this.utxoPool.contains(unspent)) {
+            if(!utxoPool.contains(unspent)) {
                return false;
             }
 
@@ -35,7 +35,7 @@ public class TxHandler {
         for (int i = 0; i < inputs.size(); i ++) {
 
             UTXO unspent = new UTXO(inputs.get(i).prevTxHash, inputs.get(i).outputIndex);
-            Transaction.Output prevOutput = this.utxoPool.getTxOutput(unspent);
+            Transaction.Output prevOutput = utxoPool.getTxOutput(unspent);
 
             byte[] message = tx.getRawDataToSign(i);
 
@@ -84,7 +84,7 @@ public class TxHandler {
 
         for (int i = 0; i < inputs.size(); i ++) {
             UTXO unspent = new UTXO(inputs.get(i).prevTxHash, inputs.get(i).outputIndex);
-            Transaction.Output prevOutput = this.utxoPool.getTxOutput(unspent);
+            Transaction.Output prevOutput = utxoPool.getTxOutput(unspent);
             totalInput += prevOutput.value;
         }
 
@@ -113,49 +113,62 @@ public class TxHandler {
             Transaction tx = possibleTxs[j];
             boolean validTx = isValidTx(tx);
 
-            if (!validTx) continue;
+            if (!validTx) {
+                invalidTxs.add(tx);
+                continue;
+            }
 
             // remove old uxtos that are now spent..
             ArrayList<Transaction.Input> inputs = tx.getInputs();
             for (int i=0; i<inputs.size(); i++) {
                 Transaction.Input input = inputs.get(i);
                 UTXO u = new UTXO(input.prevTxHash, input.outputIndex);
-                this.utxoPool.removeUTXO(u);
+                utxoPool.removeUTXO(u);
             }
 
             // add new utxos to the pool
             ArrayList<Transaction.Output> outputs = tx.getOutputs();
             for (int i=0; i<outputs.size(); i++) {
                 UTXO utxo = new UTXO(tx.getHash(), i);
-                this.utxoPool.addUTXO(utxo, outputs.get(i));
+                utxoPool.addUTXO(utxo, outputs.get(i));
             }
 
             txs.add(tx);
         }
 
-        for (int j = 0; j < invalidTxs.size(); j++) {
+        while (true) {
 
-            Transaction tx = invalidTxs.get(j);
-            boolean validTx = isValidTx(tx);
+            boolean stillValidTx = false;
 
-            if (!validTx) continue;
+            for(int j = 0 ; j < invalidTxs.size(); j++){
 
-            // remove old uxtos that are now spent..
-            ArrayList<Transaction.Input> inputs = tx.getInputs();
-            for (int i=0; i<inputs.size(); i++) {
-                Transaction.Input input = inputs.get(i);
-                UTXO u = new UTXO(input.prevTxHash, input.outputIndex);
-                this.utxoPool.removeUTXO(u);
+                Transaction tx = invalidTxs.get(j);
+                boolean validTx = isValidTx(tx);
+
+                if (!validTx) {
+                    continue;
+                }
+
+                txs.add(tx);
+                stillValidTx = true;
+
+                // remove old uxtos that are now spent..
+                ArrayList<Transaction.Input> inputs = tx.getInputs();
+                for (int i=0; i<inputs.size(); i++) {
+                    Transaction.Input input = inputs.get(i);
+                    UTXO u = new UTXO(input.prevTxHash, input.outputIndex);
+                    utxoPool.removeUTXO(u);
+                }
+
+                // add new utxos to the pool
+                ArrayList<Transaction.Output> outputs = tx.getOutputs();
+                for (int i=0; i<outputs.size(); i++) {
+                    UTXO utxo = new UTXO(tx.getHash(), i);
+                    utxoPool.addUTXO(utxo, outputs.get(i));
+                }
             }
 
-            // add new utxos to the pool
-            ArrayList<Transaction.Output> outputs = tx.getOutputs();
-            for (int i=0; i<outputs.size(); i++) {
-                UTXO utxo = new UTXO(tx.getHash(), i);
-                this.utxoPool.addUTXO(utxo, outputs.get(i));
-            }
-
-            txs.add(tx);
+            if (stillValidTx == false) break;
         }
 
         return Arrays.copyOf(txs.toArray(), txs.size(), Transaction[].class);
