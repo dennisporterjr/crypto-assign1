@@ -5,18 +5,16 @@ public class TxHandler {
     private UTXOPool utxoPool;
 
     public TxHandler(UTXOPool utxoPool) {
-        // IMPLEMENT THIS
         this.utxoPool = new UTXOPool(utxoPool);
-
-        // All unspent transaction outputs
-        ArrayList<UTXO> utxo = this.utxoPool.getAllUTXO();
-
     }
 
     public boolean isValidTx(Transaction tx) {
 
         ArrayList<Transaction.Input> inputs = tx.getInputs();
         ArrayList<Transaction.Output> outputs = tx.getOutputs();
+
+        // Note: all this looping isn't optimal, but it helped me separate the conditions out..
+        // plus I haven't coded Java in a while so I need to take baby steps..
 
         /**
          * (1) all outputs claimed by {@code tx} are in the current UTXO pool,
@@ -116,6 +114,7 @@ public class TxHandler {
 
             if (!validTx) continue;
 
+            // remove old uxtos that are now spent..
             ArrayList<Transaction.Input> inputs = tx.getInputs();
             for (int i=0; i<inputs.size(); i++) {
                 Transaction.Input input = inputs.get(i);
@@ -123,6 +122,7 @@ public class TxHandler {
                 this.utxoPool.removeUTXO(u);
             }
 
+            // add new utxos to the pool
             ArrayList<Transaction.Output> outputs = tx.getOutputs();
             for (int i=0; i<outputs.size(); i++) {
                 UTXO utxo = new UTXO(tx.getHash(), i);
