@@ -3,11 +3,7 @@ import java.util.*;
 public class TxHandler {
 
     private UTXOPool utxoPool;
-    /**
-     * Creates a public ledger whose current UTXOPool (collection of unspent transaction outputs) is
-     * {@code utxoPool}. This should make a copy of utxoPool by using the UTXOPool(UTXOPool uPool)
-     * constructor.
-     */
+
     public TxHandler(UTXOPool utxoPool) {
         // IMPLEMENT THIS
         this.utxoPool = new UTXOPool(utxoPool);
@@ -15,61 +11,26 @@ public class TxHandler {
         // All unspent transaction outputs
         ArrayList<UTXO> utxo = this.utxoPool.getAllUTXO();
 
-        // loop through unspent tx outputs
-/*        for (UTXO txoutput : utxo) {
-            Transaction.Output output = this.utxoPool.getTxOutput(txoutput);
-        }*/
-
     }
 
-    /**
-     * @return true if:
-     * (3) no UTXO is claimed multiple times by {@code tx},
-     */
     public boolean isValidTx(Transaction tx) {
 
         ArrayList<Transaction.Input> inputs = tx.getInputs();
-        int inputSize = inputs.size();
-
         ArrayList<Transaction.Output> outputs = tx.getOutputs();
+        int inputSize = inputs.size();
         int outputSize = outputs.size();
 
-        HashMap<Integer,byte[]> opHashes;
-        opHashes = new HashMap<Integer, byte[]>();
 
-        // total inputs and outputs
-        double totalInput = 0.0;
-        double totalOutput = 0.0;
-
-        boolean validSig;
+        /**
+         * (1) all outputs claimed by {@code tx} are in the current UTXO pool,
+         */
+        HashMap<Integer,byte[]> opHashes = new HashMap<Integer, byte[]>();
 
         for (int i = 0; i < inputSize; i ++) {
-
-            UTXO unspent = new UTXO(inputs.get(i).prevTxHash, inputs.get(i).outputIndex);
-            Transaction.Output ut = this.utxoPool.getTxOutput(unspent);
-
-            if(this.utxoPool.contains(unspent)) {
-                // (2) the signatures on each input of {@code tx} are valid,
-                validSig = Crypto.verifySignature(ut.address, tx.getRawDataToSign(inputs.get(i).outputIndex), inputs.get(i).signature);
-                if (!validSig) {
-                    return false;
-                }
-            } else {
-                return false;
-            }
-
-            totalInput += ut.value;
             opHashes.put(inputs.get(i).outputIndex, inputs.get(i).prevTxHash);
         }
 
         for (int i = 0; i < outputSize; i ++) {
-
-            // (4) all of {@code tx}s output values are non-negative, and
-            if (outputs.get(i).value <= 0) {
-                return false;
-            }
-
-            // (1) all outputs claimed by {@code tx} are in the current UTXO pool,
             if (opHashes.containsKey(i)) {
                 if (!this.utxoPool.contains(new UTXO(opHashes.get(i), i))) {
                     return false;
@@ -77,12 +38,78 @@ public class TxHandler {
             } else {
                 return false;
             }
+        }
 
+        /**
+         * (2) the signatures on each input of {@code tx} are valid,
+         */
+        for (int i = 0; i < inputSize; i ++) {
+
+            if(tx.getInput(inputs.get(i).outputIndex) == null) {
+                return false;
+            }
+
+            UTXO unspent = new UTXO(inputs.get(i).prevTxHash, inputs.get(i).outputIndex);
+            Transaction.Output prevOutput = this.utxoPool.getTxOutput(unspent);
+
+            byte[] message = tx.getRawDataToSign(inputs.get(i).outputIndex);
+
+            if(message == null) {
+                return false;
+            }
+
+            if(inputs.get(i).signature == null){
+                return false;
+            }
+
+            if(!Crypto.verifySignature(prevOutput.address, message, inputs.get(i).signature)) {
+                return false;
+            }
+        }
+
+        /**
+         * (3) no UTXO is claimed multiple times by tx
+         */
+        ArrayList<UTXO> claimedUXTO = new ArrayList<UTXO>();
+
+        for (int i = 0; i < inputSize; i ++) {
+            UTXO unspent = new UTXO(inputs.get(i).prevTxHash, inputs.get(i).outputIndex);
+
+            for(int j =0; claimedUXTO.size() > j; j++) {
+                if (unspent.equals(claimedUXTO.get(j))) {
+                    return false;
+                }
+            }
+
+            claimedUXTO.add(unspent);
+        }
+
+        /**
+         * (4) all of {@code tx}s output values are non-negative, and
+         */
+        for (int i = 0; i < outputSize; i ++) {
+            if (outputs.get(i).value <= 0) {
+                return false;
+            }
+        }
+
+        /**
+         * (5) the sum of {@code tx}s input values is greater than or equal to the sum of its output
+         * values; and false otherwise.
+         */
+        double totalInput = 0.0;
+        double totalOutput = 0.0;
+
+        for (int i = 0; i < inputSize; i ++) {
+            UTXO unspent = new UTXO(inputs.get(i).prevTxHash, inputs.get(i).outputIndex);
+            Transaction.Output prevOutput = this.utxoPool.getTxOutput(unspent);
+            totalInput += prevOutput.value;
+        }
+
+        for (int i = 0; i < outputSize; i ++) {
             totalOutput += outputs.get(i).value;
         }
 
-        // (5) the sum of {@code tx}s input values is greater than or equal to the sum of its output
-        // values; and false otherwise.
         if (totalInput < totalOutput) {
             return false;
         }
@@ -95,16 +122,16 @@ public class TxHandler {
      * transaction for correctness, returning a mutually valid array of accepted transactions, and
      * updating the current UTXO pool as appropriate.
      */
-    public List<Transaction> handleTxs(Transaction[] possibleTxs) {
-/*        List<Transaction> transactions = new List<Transaction>();
-        for(int i = 0 ; i < possibleTxs.length ; i++){
+    public Transaction[] handleTxs(Transaction[] possibleTxs) {
+        List<Transaction> transactions = new ArrayList<>();
+        for(int i = 0 ; i < possibleTxs.length; i++){
             Transaction tx = possibleTxs[i];
             if(isValidTx(tx)){
                 transactions.add(tx);
             }
         }
-        return transactions;*/
-        return possibleTxs;
+        Transaction[] validTxs = transactions.toArray(new Transaction[0]);
+        return validTxs;
     }
 
 }

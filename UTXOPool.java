@@ -7,8 +7,7 @@ public class UTXOPool {
     /**
      * The current collection of UTXOs, with each one mapped to its corresponding transaction output
      */
-    public HashMap<UTXO, Transaction.Output> H;
-    //private HashMap<UTXO, Transaction.Output> H;
+    private HashMap<UTXO, Transaction.Output> H;
 
     /** Creates a new empty UTXOPool */
     public UTXOPool() {
