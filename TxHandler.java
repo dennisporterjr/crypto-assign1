@@ -105,7 +105,8 @@ public class TxHandler {
      * updating the current UTXO pool as appropriate.
      */
     public Transaction[] handleTxs(Transaction[] possibleTxs) {
-        List<Transaction> transactions = new ArrayList<>();
+        List<Transaction> txs = new ArrayList<>();
+        List<Transaction> invalidTxs = new ArrayList<>();
 
         for(int j = 0 ; j < possibleTxs.length; j++){
 
@@ -129,10 +130,35 @@ public class TxHandler {
                 this.utxoPool.addUTXO(utxo, outputs.get(i));
             }
 
-            transactions.add(tx);
+            txs.add(tx);
         }
 
-        return Arrays.copyOf(transactions.toArray(), transactions.size(), Transaction[].class);
+        for (int j = 0; j < invalidTxs.size(); j++) {
+
+            Transaction tx = invalidTxs.get(j);
+            boolean validTx = isValidTx(tx);
+
+            if (!validTx) continue;
+
+            // remove old uxtos that are now spent..
+            ArrayList<Transaction.Input> inputs = tx.getInputs();
+            for (int i=0; i<inputs.size(); i++) {
+                Transaction.Input input = inputs.get(i);
+                UTXO u = new UTXO(input.prevTxHash, input.outputIndex);
+                this.utxoPool.removeUTXO(u);
+            }
+
+            // add new utxos to the pool
+            ArrayList<Transaction.Output> outputs = tx.getOutputs();
+            for (int i=0; i<outputs.size(); i++) {
+                UTXO utxo = new UTXO(tx.getHash(), i);
+                this.utxoPool.addUTXO(utxo, outputs.get(i));
+            }
+
+            txs.add(tx);
+        }
+
+        return Arrays.copyOf(txs.toArray(), txs.size(), Transaction[].class);
     }
 
 }
