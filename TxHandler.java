@@ -21,6 +21,15 @@ public class TxHandler {
         /**
          * (1) all outputs claimed by {@code tx} are in the current UTXO pool,
          */
+        for (int i = 0; i < inputs.size(); i ++) {
+
+            UTXO unspent = new UTXO(inputs.get(i).prevTxHash, inputs.get(i).outputIndex);
+
+            if(!this.utxoPool.contains(unspent)) {
+               return false;
+            }
+
+        }
 
         /**
          * (2) the signatures on each input of {@code tx} are valid,
@@ -45,15 +54,49 @@ public class TxHandler {
         /**
          * (3) no UTXO is claimed multiple times by tx
          */
+        ArrayList<UTXO> claimedUXTO = new ArrayList<UTXO>();
+
+        for (int i = 0; i < inputs.size(); i ++) {
+            UTXO unspent = new UTXO(inputs.get(i).prevTxHash, inputs.get(i).outputIndex);
+
+            for(int j =0; claimedUXTO.size() > j; j++) {
+                if (unspent.equals(claimedUXTO.get(j))) {
+                    return false;
+                }
+            }
+
+            claimedUXTO.add(unspent);
+        }
 
         /**
          * (4) all of {@code tx}s output values are non-negative, and
          */
+        for (int i = 0; i < outputs.size(); i ++) {
+            if (outputs.get(i).value <= 0) {
+                return false;
+            }
+        }
 
         /**
          * (5) the sum of {@code tx}s input values is greater than or equal to the sum of its output
          * values; and false otherwise.
          */
+        double totalInput = 0.0;
+        double totalOutput = 0.0;
+
+        for (int i = 0; i < inputs.size(); i ++) {
+            UTXO unspent = new UTXO(inputs.get(i).prevTxHash, inputs.get(i).outputIndex);
+            Transaction.Output prevOutput = this.utxoPool.getTxOutput(unspent);
+            totalInput += prevOutput.value;
+        }
+
+        for (int i = 0; i < outputs.size(); i ++) {
+            totalOutput += outputs.get(i).value;
+        }
+
+        if (totalInput < totalOutput) {
+            return false;
+        }
 
         return true;
     }
