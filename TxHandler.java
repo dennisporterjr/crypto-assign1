@@ -108,14 +108,31 @@ public class TxHandler {
      */
     public Transaction[] handleTxs(Transaction[] possibleTxs) {
         List<Transaction> transactions = new ArrayList<>();
-        for(int i = 0 ; i < possibleTxs.length; i++){
-            Transaction tx = possibleTxs[i];
-            if(isValidTx(tx)){
-                transactions.add(tx);
+
+        for(int j = 0 ; j < possibleTxs.length; j++){
+
+            Transaction tx = possibleTxs[j];
+            boolean validTx = isValidTx(tx);
+
+            if (!validTx) continue;
+
+            ArrayList<Transaction.Input> inputs = tx.getInputs();
+            for (int i=0; i<inputs.size(); i++) {
+                Transaction.Input input = inputs.get(i);
+                UTXO u = new UTXO(input.prevTxHash, input.outputIndex);
+                this.utxoPool.removeUTXO(u);
             }
+
+            ArrayList<Transaction.Output> outputs = tx.getOutputs();
+            for (int i=0; i<outputs.size(); i++) {
+                UTXO utxo = new UTXO(tx.getHash(), i);
+                this.utxoPool.addUTXO(utxo, outputs.get(i));
+            }
+
+            transactions.add(tx);
         }
-        Transaction[] validTxs = transactions.toArray(new Transaction[0]);
-        return validTxs;
+
+        return Arrays.copyOf(transactions.toArray(), transactions.size(), Transaction[].class);
     }
 
 }
